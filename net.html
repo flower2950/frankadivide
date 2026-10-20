@@ -44,7 +44,7 @@ document.getElementById('go').onclick = async function(){
     return;
   }
 
-  var ch = sb.channel('test_room', {config:{broadcast:{self:true}}});
+  var ch = sb.channel('frk_1234', {config:{broadcast:{self:true}}});
   log('频道对象已建：test_room');
 
   ch.on('broadcast', {event:'ping'}, function(p){
