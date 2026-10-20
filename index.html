@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>弗兰卡：裂变</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="wrap">
+  <canvas id="cv"></canvas>
+  <div id="hint">点敌人锁定 · 点空地取消 · 长按技能看范围 · 手机请横屏</div>
+  <button id="bagBtn">背包</button>
+  <div id="bagPanel" class="hide">
+    <div class="bagHead"><span>背包</span><b id="bagClose">×</b></div>
+    <div class="bagRow"><i>武器</i><em id="eqW">—</em></div>
+    <div class="bagRow"><i>护甲</i><em id="eqA">—</em></div>
+    <div class="bagRow"><i>饰品</i><em id="eqR">—</em></div>
+    <div class="bagList" id="bagList"></div>
+  </div>
+</div>
+<script src="game.js"></script>
+</body>
+</html>
