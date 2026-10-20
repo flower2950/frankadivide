@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>联机测试</title>
+<style>
+body{background:#111;color:#ddd;font-family:sans-serif;padding:16px;font-size:14px}
+button{background:#2ecc71;color:#000;border:0;padding:10px 20px;border-radius:6px;font-size:16px}
+#log{white-space:pre-wrap;word-break:break-all;background:#000;padding:10px;border-radius:6px;margin-top:12px;line-height:1.5}
+.ok{color:#4f4}.err{color:#f55}.info{color:#5af}
+</style>
+</head>
+<body>
+<button id="go">点我测试连接</button>
+<div id="log">未开始</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+var logEl = document.getElementById('log');
+function log(msg, cls){
+  var d = document.createElement('div');
+  if(cls) d.className = cls;
+  d.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+  logEl.appendChild(d);
+}
+logEl.textContent = '';
+
+document.getElementById('go').onclick = async function(){
+  logEl.textContent = '';
+  log('supabase 库：' + (window.supabase ? '已加载 ✅' : '未加载 ❌'), window.supabase?'ok':'err');
+  if(!window.supabase) return;
+
+  var URL = 'https://rdwhqsvovabtyjlxbagf.supabase.co';
+  var KEY = 'sb_publishable_G_i8uDGtnjdGTGG73F2Rqg_hBiu-HuZ';
+  log('创建客户端…');
+
+  var sb;
+  try{
+    sb = supabase.createClient(URL, KEY);
+    log('客户端创建成功', 'ok');
+  }catch(e){
+    log('创建客户端失败：' + e.message, 'err');
+    return;
+  }
+
+  var ch = sb.channel('test_room', {config:{broadcast:{self:true}}});
+  log('频道对象已建：test_room');
+
+  ch.on('broadcast', {event:'ping'}, function(p){
+    log('收到广播：' + JSON.stringify(p), 'ok');
+  });
+
+  ch.subscribe(function(status, err){
+    log('订阅状态：' + status + (err ? ' | 错误：' + JSON.stringify(err) : ''), status==='SUBSCRIBED'?'ok':'info');
+    if(status === 'SUBSCRIBED'){
+      setInterval(function(){
+        ch.send({type:'broadcast', event:'ping', payload:{t:Date.now()}});
+      }, 2000);
+      log('每 2 秒发送一次 ping，看能不能收到回音', 'info');
+    }
+  });
+
+  setTimeout(function(){
+    log('—— 10 秒后如果状态不是 SUBSCRIBED，就是服务端拒绝或网络不通 ——', 'info');
+  }, 10000);
+};
+</script>
+</body>
+</html>
