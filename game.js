@@ -53,15 +53,49 @@ window.__reset=function(){if(confirm('确定清空存档？')){localStorage.remo
 setInterval(saveGame,5000);window.addEventListener('beforeunload',saveGame);
 document.addEventListener('visibilitychange',function(){if(document.hidden)saveGame();});
 var NET={on:false,room:'',me:'p'+Math.random().toString(36).slice(2,9),others:{},last:0,ch:null};
-function connect(room,cb){if(!window.supabase||!window.supabase.createClient){cb('联机库未加载');return;}
-try{var sb=window.supabase.createClient(SUPA_URL,SUPA_KEY);NET.room=room;NET.on=true;
-var ch=sb.channel('frk_'+room,{config:{broadcast:{self:false}}});
-ch.on('broadcast',{event:'pos'},function(pl){var d=pl.payload;if(!d||d.id===NET.me)return;d.t=performance.now();NET.others[d.id]=d;});
-ch.subscribe(function(st){if(st==='SUBSCRIBED')cb(null);else if(st==='CHANNEL_ERROR'||st==='TIMED_OUT')cb('通道错误');});
-NET.ch=ch;}catch(e){cb(e.message||'未知错误');}}
-function netTick(dt){if(!NET.on||!NET.ch)return;NET.last+=dt;if(NET.last<.1)return;NET.last=0;var now=performance.now();
-for(var k in NET.others){if(now-NET.others[k].t>3000)delete NET.others[k];}
-try{NET.ch.send({type:'broadcast',event:'pos',payload:{id:NET.me,name:P.name,x:Math.round(P.x),y:Math.round(P.y),face:P.face,level:P.level}});}catch(e){}}
+function connect(room,cb){
+  if(!window.supabase){cb('联机库未加载');return;}
+  if(NET.ch){try{NET.ch.unsubscribe();}catch(e){}NET.ch=null;}
+  var sb;
+  try{sb=window.supabase.createClient(SUPA_URL,SUPA_KEY);}catch(e){cb('创建客户端失败:'+e.message);return;}
+  var ch=sb.channel('frk_'+room,{config:{broadcast:{self:false}}});
+  var done=false;
+  ch.on('broadcast',{event:'pos'},function(pl){
+    if(!pl||!pl.payload)return;
+    var d=pl.payload;
+    if(!d.id||d.id===NET.me)return;
+    NET.others[d.id]={id:d.id,name:d.name||'玩家',x:d.x,y:d.y,face:d.face||0,level:d.level||1,t:Date.now()};
+  });
+  ch.subscribe(function(st,err){
+    if(st==='SUBSCRIBED'){
+      if(done)return;
+      done=true;
+      NET.ch=ch;NET.room=room;NET.on=true;NET.last=0;
+      cb(null);
+    }else if(st==='CHANNEL_ERROR'||st==='TIMED_OUT'){
+      if(done)return;
+      done=true;
+      cb('通道错误:'+(err?JSON.stringify(err):st));
+    }
+  });
+  setTimeout(function(){
+    if(!done){done=true;cb('连接超时(8秒)');}
+  },8000);
+}
+function netTick(dt){
+  if(!NET.on||!NET.ch)return;
+  NET.last+=dt;
+  if(NET.last>0.1){
+    NET.last=0;
+    try{
+      NET.ch.send({type:'broadcast',event:'pos',payload:{id:NET.me,name:NET.name,x:P.x,y:P.y,face:P.face,level:P.level}});
+    }catch(e){}
+  }
+  var now=Date.now();
+  for(var k in NET.others){
+    if(now-NET.others[k].t>3000)delete NET.others[k];
+  }
+}
 var keys={};
 window.addEventListener('keydown',function(e){var k=e.key.toLowerCase();keys[k]=true;
 if(k==='l')autoLock();if(k==='1')castSkill('slash');if(k==='2')castSkill('dash');if(k==='3')castSkill('spin');if(k==='4')castSkill('ult');
