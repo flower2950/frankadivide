@@ -196,9 +196,7 @@ function movePress(px,py){if(!press)return;
 function endPress(){
   if(!press)return;var pr=press;press=null;
   if(!SK[pr.key])return;
-  var s=SK[pr.key];
-  var reach=pr.reach>4?pr.reach:s.range*0.45;
-  castSkill(pr.key,pr.ang,reach);
+  castSkill(pr.key,pr.ang,SK[pr.key].range);
 }
 function cancelPress(){press=null;}
 function pickTarget(sx,sy){var wx=P.x+(sx-W/2),wy=P.y+(sy-H/2),best=null,bd=48;
@@ -392,7 +390,7 @@ function draw(){
   ctx.restore();
   drawFx(camX,camY,ox,oy);
   if(press&&SK[press.key]){
-    var s=SK[press.key],spx=P.x-camX+ox,spy=P.y-camY+oy,rad=press.reach>4?press.reach:s.range*0.45;
+    var s=SK[press.key],spx=P.x-camX+ox,spy=P.y-camY+oy,rad=s.range;
     ctx.save();
     ctx.fillStyle='rgba(120,200,255,.16)';ctx.strokeStyle='rgba(140,220,255,.9)';ctx.lineWidth=2;
     if(s.arc<6.2){ctx.beginPath();ctx.moveTo(spx,spy);ctx.arc(spx,spy,rad,press.ang-s.arc/2,press.ang+s.arc/2);ctx.closePath();ctx.fill();ctx.stroke();}
