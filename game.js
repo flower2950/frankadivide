@@ -20,6 +20,33 @@ var ZONES=[{name:'村庄 · 安全区',x:610,y:430,w:560,h:430,safe:true},{name:
 var VILL={x:610,y:430,w:560,h:430};
 var HOUSES=[{x:700,y:478,w:112,h:86,door:{x:44,y:86,w:24,h:20}},{x:848,y:478,w:128,h:76,door:{x:50,y:76,w:26,h:20}},{x:1000,y:480,w:100,h:84,door:{x:38,y:84,w:22,h:20}},{x:700,y:742,w:104,h:72,door:{x:40,y:72,w:24,h:20}},{x:960,y:740,w:132,h:74,door:{x:52,y:74,w:26,h:20}}];
 var scene='map',enterHouse=null,sceneT=0;
+var walkT=0;
+/* ---- 联机（Supabase broadcast，无库简易实现） ---- */
+var NET={on:false,room:'',name:'兰德',others:{},ch:null,last:0};
+function netTick(dt){
+  if(!NET.on||!NET.ch)return;
+  NET.last+=dt;
+  if(NET.last<0.12)return;
+  NET.last=0;
+  try{NET.ch.send({type:'broadcast',event:'pos',payload:{id:NET.id,name:P.name,x:Math.round(P.x),y:Math.round(P.y),face:P.face,hp:Math.round(P.hp)}});}catch(e){}
+}
+function connect(room,cb){
+  if(!window.supabase){cb&&cb('联机库未加载');return;}
+  try{
+    var cli=window.supabase.createClient(SUPA_URL,SUPA_KEY);
+    NET.id=Math.random().toString(36).slice(2,10);
+    var ch=cli.channel('frk_'+room,{config:{broadcast:{self:false}}});
+    NET.ch=ch;NET.room=room;
+    ch.on('broadcast',{event:'pos'},function(m){
+      var p=m&&m.payload;if(!p||p.id===NET.id)return;
+      NET.others[p.id]={x:p.x,y:p.y,face:p.face,name:p.name||'玩家',hp:p.hp};
+    });
+    ch.subscribe(function(st){
+      if(st==='SUBSCRIBED'){NET.on=true;cb&&cb(null);}
+    });
+    setTimeout(function(){if(!NET.on)cb&&cb('超时未连上（检查房间码/网络）');},6000);
+  }catch(e){cb&&cb(e.message||'连接异常');}
+}
 var SK={slash:{name:'挥砍',cd:.6,mp:0,range:34,arc:1.5,dmg:1},dash:{name:'突进斩',cd:4,mp:8,range:70,arc:1.1,dmg:1.3},spin:{name:'旋斩',cd:6,mp:12,range:42,arc:6.283,dmg:.85},ult:{name:'林泉·斩',cd:10,mp:50,range:96,arc:1.9,dmg:2.2}};
 var SKK=['slash','dash','spin','ult'];
 var QUAL=[{color:'#bbb',m:1},{color:'#4d4',m:1.6},{color:'#5af',m:2.4},{color:'#c6f',m:3.4}];
@@ -236,8 +263,6 @@ function drawRoom(){
     ctx.fillStyle='#8a6a44';var px=Math.floor(sw/48),py=Math.floor(sh/36);
     for(var ix=0;ix<px;ix++)for(var iy=0;iy<py;iy++){if((ix+iy)%2===0){ctx.globalAlpha=.18;ctx.fillRect(cx-sw/2+ix*48,cy-sh/2+iy*36,48,36);ctx.globalAlpha=1;}}
     ctx.fillStyle='#3a2a1c';ctx.fillRect(cx-sw/2,cy-sh/2,sw,24);
-    ctx.fillStyle='#c8a060';roundRect(cx-60,cy-sh/2+60,120,60,6,'#7a5a34');
-    ctx.fillStyle='#a07840';roundRect(cx-sw*0.32,cy+sh*0.14,90,54,5,'#6a4a2c');
   }
   ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(0,0,W,54);
   ctx.fillStyle='#eee';ctx.font='bold 13px sans-serif';ctx.textAlign='left';
@@ -277,7 +302,15 @@ function drawMapScene(){
   drawFx(camX,camY,ox,oy);
 }
 function draw(){
-  if(scene==='in'){drawRoom();drawHUD();return;}
+  try{
+    if(scene==='in'){drawRoom();drawHUD();return;}
+    drawMapScene();drawHUD();
+  }catch(e){
+    ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#f66';ctx.font='bold 14px sans-serif';ctx.textAlign='left';
+    ctx.fillText('绘制出错：'+e.message,12,80);
+  }
+}
   drawMapScene();
   drawHUD();
 }
